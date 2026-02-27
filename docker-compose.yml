@@ -18,7 +18,7 @@ services:
   api:
     build: .
     ports:
-      - "8000:8000"
+      - "8001:8000"   # хост:контейнер (8001 если 8000 занят)
     environment:
       DATABASE_URL: postgresql://postgres:postgres@db:5432/org_api
       LOG_LEVEL: INFO
