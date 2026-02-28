@@ -66,6 +66,12 @@ def test_create_employee_nonexistent_department(client: TestClient) -> None:
     assert r.status_code == 404
 
 
+def test_get_department_not_found(client: TestClient) -> None:
+    """GET /departments/{id} returns 404 for non-existent department."""
+    r = client.get("/departments/99999")
+    assert r.status_code == 404
+
+
 def test_get_department_tree(client: TestClient) -> None:
     """GET /departments/{id} returns department with employees and children."""
     cr = client.post("/departments/", json={"name": "Root", "parent_id": None})
@@ -110,6 +116,22 @@ def test_patch_department_self_parent_conflict(client: TestClient) -> None:
     assert r.status_code == 409
 
 
+def test_patch_department_cycle_conflict(client: TestClient) -> None:
+    """PATCH moving department into its own subtree returns 409."""
+    cr = client.post("/departments/", json={"name": "Parent", "parent_id": None})
+    assert cr.status_code == 200
+    parent_id = cr.json()["id"]
+    cr2 = client.post("/departments/", json={"name": "Child", "parent_id": parent_id})
+    assert cr2.status_code == 200
+    child_id = cr2.json()["id"]
+    # Move Parent under Child (would create cycle: Parent -> Child -> Parent)
+    r = client.patch(
+        f"/departments/{parent_id}",
+        json={"parent_id": child_id},
+    )
+    assert r.status_code == 409
+
+
 def test_delete_department_cascade(client: TestClient) -> None:
     """DELETE with mode=cascade removes department and employees."""
     cr = client.post("/departments/", json={"name": "ToDelete", "parent_id": None})
@@ -123,6 +145,24 @@ def test_delete_department_cascade(client: TestClient) -> None:
     assert r.status_code == 204
     get_r = client.get(f"/departments/{dept_id}")
     assert get_r.status_code == 404
+
+
+def test_delete_reassign_without_target_returns_400(client: TestClient) -> None:
+    """DELETE with mode=reassign without reassign_to_department_id returns 400."""
+    cr = client.post("/departments/", json={"name": "X", "parent_id": None})
+    assert cr.status_code == 200
+    dept_id = cr.json()["id"]
+    r = client.delete(f"/departments/{dept_id}?mode=reassign")
+    assert r.status_code == 400
+
+
+def test_delete_invalid_mode(client: TestClient) -> None:
+    """DELETE with invalid mode returns 422."""
+    cr = client.post("/departments/", json={"name": "Y", "parent_id": None})
+    assert cr.status_code == 200
+    dept_id = cr.json()["id"]
+    r = client.delete(f"/departments/{dept_id}?mode=invalid")
+    assert r.status_code == 422
 
 
 def test_delete_department_reassign(client: TestClient) -> None:

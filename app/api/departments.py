@@ -1,4 +1,6 @@
 """Department and employee endpoints."""
+from typing import Literal
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
@@ -45,13 +47,14 @@ def post_employee(
 def get_department(
     department_id: int,
     db: Session = Depends(get_db),
-    depth: int = Query(1, ge=1, le=5, description="Depth of nested departments"),
+    depth: int = Query(1, ge=1, le=5, description="Depth of nested departments (max 5)"),
     include_employees: bool = Query(True, description="Include employees list"),
-    sort_employees: str = Query("created_at", description="Sort employees by: created_at or full_name"),
+    sort_employees: Literal["created_at", "full_name"] = Query(
+        "created_at",
+        description="Sort employees by created_at or full_name",
+    ),
 ) -> DepartmentTreeResponse:
     """Get department with details, employees and subtree up to depth."""
-    if sort_employees not in ("created_at", "full_name"):
-        sort_employees = "created_at"
     return get_department_tree(
         db,
         department_id,
@@ -76,7 +79,10 @@ def patch_department(
 def delete_department_endpoint(
     department_id: int,
     db: Session = Depends(get_db),
-    mode: str = Query(..., description="cascade or reassign"),
+    mode: Literal["cascade", "reassign"] = Query(
+        ...,
+        description="cascade — delete with all employees and children; reassign — move employees to target",
+    ),
     reassign_to_department_id: int | None = Query(
         None,
         description="Required when mode=reassign",

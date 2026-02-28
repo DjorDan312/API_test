@@ -43,7 +43,7 @@ def _get_descendant_ids(db: Session, department_id: int) -> set[int]:
         rows = db.execute(
             select(Department.id).where(Department.parent_id == current)
         ).scalars().all()
-        for (child_id,) in rows:
+        for child_id in rows:
             result.add(child_id)
             stack.append(child_id)
     return result
