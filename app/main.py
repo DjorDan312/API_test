@@ -2,7 +2,7 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 
 from app.api.departments import router as departments_router
 from app.db import init_db
@@ -29,6 +29,12 @@ app = FastAPI(
 )
 
 app.include_router(departments_router)
+
+
+@app.get("/", include_in_schema=False)
+def root() -> RedirectResponse:
+    """Redirect to API documentation."""
+    return RedirectResponse(url="/docs", status_code=302)
 
 
 @app.exception_handler(DepartmentNotFoundError)
